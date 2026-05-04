@@ -1,0 +1,168 @@
+{
+  "normal": {
+    "scenario": "normal",
+    "event_count": 2000,
+    "engine_update_count": 20,
+    "dca_state_final": "NORMAL",
+    "state_sequence": [
+      "NORMAL"
+    ],
+    "confidence_min": 0.91,
+    "confidence_max": 0.99,
+    "confidence_final": 0.99,
+    "offset_us_avg": 84.42956923619604,
+    "offset_us_final": 100.77745519269067,
+    "offset_us_std": 23.584881180527493,
+    "drift_ppm_final": -2.7468916356713695,
+    "drift_ppm_max_abs": 7.139771784934375,
+    "jitter_us_max_residual": 197.0,
+    "jitter_us_avg_residual": 120.65930352341384,
+    "holdover_duration_ms": 0,
+    "mode_transition_latency_us": {
+      "first_holdover_time_us": null,
+      "first_recovery_time_us": null
+    },
+    "seq_gap_count": 0,
+    "pps_lost_event_count": 0,
+    "jitter_spike_event_count": 0
+  },
+  "pps_lost_holdover": {
+    "scenario": "pps_lost_holdover",
+    "event_count": 2000,
+    "engine_update_count": 20,
+    "dca_state_final": "RECOVERY",
+    "state_sequence": [
+      "NORMAL",
+      "HOLDOVER",
+      "RECOVERY"
+    ],
+    "confidence_min": 0.6285035664843748,
+    "confidence_max": 0.98,
+    "confidence_final": 0.75,
+    "offset_us_avg": 83.11933725924328,
+    "offset_us_final": 106.06541199970957,
+    "offset_us_std": 23.4371540451736,
+    "drift_ppm_final": -8.170828771056662,
+    "drift_ppm_max_abs": 9.95619818649411,
+    "jitter_us_max_residual": 210.0,
+    "jitter_us_avg_residual": 88.73785670069046,
+    "holdover_duration_ms": 6000.0,
+    "mode_transition_latency_us": {
+      "first_holdover_time_us": 9000000,
+      "first_recovery_time_us": 16000000
+    },
+    "seq_gap_count": 0,
+    "pps_lost_event_count": 6,
+    "jitter_spike_event_count": 0
+  },
+  "pps_recovery": {
+    "scenario": "pps_recovery",
+    "event_count": 2500,
+    "engine_update_count": 25,
+    "dca_state_final": "NORMAL",
+    "state_sequence": [
+      "NORMAL",
+      "HOLDOVER",
+      "RECOVERY"
+    ],
+    "confidence_min": 0.6285035664843748,
+    "confidence_max": 0.99,
+    "confidence_final": 0.99,
+    "offset_us_avg": 89.17155987876461,
+    "offset_us_final": 100.75674649672408,
+    "offset_us_std": 23.493180842663048,
+    "drift_ppm_final": -0.5411113336638804,
+    "drift_ppm_max_abs": 5.918524812317342,
+    "jitter_us_max_residual": 198.0,
+    "jitter_us_avg_residual": 92.68788582610898,
+    "holdover_duration_ms": 6000.0,
+    "mode_transition_latency_us": {
+      "first_holdover_time_us": 9000000,
+      "first_recovery_time_us": 16000000
+    },
+    "seq_gap_count": 0,
+    "pps_lost_event_count": 6,
+    "jitter_spike_event_count": 0
+  },
+  "seq_gap": {
+    "scenario": "seq_gap",
+    "event_count": 1969,
+    "engine_update_count": 19,
+    "dca_state_final": "NORMAL",
+    "state_sequence": [
+      "NORMAL"
+    ],
+    "confidence_min": 0.91,
+    "confidence_max": 0.99,
+    "confidence_final": 0.99,
+    "offset_us_avg": 83.19246562860063,
+    "offset_us_final": 96.11271401950232,
+    "offset_us_std": 25.62473713465354,
+    "drift_ppm_final": -2.316717587917851,
+    "drift_ppm_max_abs": 5.49251766109551,
+    "jitter_us_max_residual": 182.90000000002328,
+    "jitter_us_avg_residual": 119.1818877408759,
+    "holdover_duration_ms": 0,
+    "mode_transition_latency_us": {
+      "first_holdover_time_us": null,
+      "first_recovery_time_us": null
+    },
+    "seq_gap_count": 1,
+    "pps_lost_event_count": 0,
+    "jitter_spike_event_count": 0
+  },
+  "jitter_spike": {
+    "scenario": "jitter_spike",
+    "event_count": 2000,
+    "engine_update_count": 20,
+    "dca_state_final": "NORMAL",
+    "state_sequence": [
+      "NORMAL"
+    ],
+    "confidence_min": 0.9,
+    "confidence_max": 0.97,
+    "confidence_final": 0.92,
+    "offset_us_avg": 89.83214771363187,
+    "offset_us_final": 106.31617267082135,
+    "offset_us_std": 25.08697246057108,
+    "drift_ppm_final": -2.886792394140833,
+    "drift_ppm_max_abs": 6.0932032551674755,
+    "jitter_us_max_residual": 913.143581200391,
+    "jitter_us_avg_residual": 242.18366091999923,
+    "holdover_duration_ms": 0,
+    "mode_transition_latency_us": {
+      "first_holdover_time_us": null,
+      "first_recovery_time_us": null
+    },
+    "seq_gap_count": 0,
+    "pps_lost_event_count": 0,
+    "jitter_spike_event_count": 3
+  },
+  "drift_slow": {
+    "scenario": "drift_slow",
+    "event_count": 4000,
+    "engine_update_count": 40,
+    "dca_state_final": "NORMAL",
+    "state_sequence": [
+      "NORMAL"
+    ],
+    "confidence_min": 0.91,
+    "confidence_max": 0.99,
+    "confidence_final": 0.99,
+    "offset_us_avg": 244.20085856049334,
+    "offset_us_final": 439.2031593897685,
+    "offset_us_std": 120.47119533750505,
+    "drift_ppm_final": 8.478884419076115,
+    "drift_ppm_max_abs": 11.806761409139796,
+    "jitter_us_max_residual": 570.0722495466471,
+    "jitter_us_avg_residual": 358.7792204240075,
+    "holdover_duration_ms": 0,
+    "mode_transition_latency_us": {
+      "first_holdover_time_us": null,
+      "first_recovery_time_us": null
+    },
+    "seq_gap_count": 0,
+    "pps_lost_event_count": 0,
+    "jitter_spike_event_count": 0
+  }
+}

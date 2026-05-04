@@ -174,7 +174,7 @@ class DCAEngine:
         drift = (delta / dt) * 1e6
 
         if self.state == SyncState.NORMAL:
-            alpha = 0.05
+            alpha = 0.08
         elif self.state == SyncState.RECOVERY:
             alpha = 0.1
         else:

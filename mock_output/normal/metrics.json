@@ -1,0 +1,27 @@
+{
+  "scenario": "normal",
+  "event_count": 2000,
+  "engine_update_count": 20,
+  "dca_state_final": "NORMAL",
+  "state_sequence": [
+    "NORMAL"
+  ],
+  "confidence_min": 0.91,
+  "confidence_max": 0.99,
+  "confidence_final": 0.99,
+  "offset_us_avg": 84.42956923619604,
+  "offset_us_final": 100.77745519269067,
+  "offset_us_std": 23.584881180527493,
+  "drift_ppm_final": -2.7468916356713695,
+  "drift_ppm_max_abs": 7.139771784934375,
+  "jitter_us_max_residual": 197.0,
+  "jitter_us_avg_residual": 120.65930352341384,
+  "holdover_duration_ms": 0,
+  "mode_transition_latency_us": {
+    "first_holdover_time_us": null,
+    "first_recovery_time_us": null
+  },
+  "seq_gap_count": 0,
+  "pps_lost_event_count": 0,
+  "jitter_spike_event_count": 0
+}

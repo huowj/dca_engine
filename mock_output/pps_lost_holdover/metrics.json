@@ -1,0 +1,29 @@
+{
+  "scenario": "pps_lost_holdover",
+  "event_count": 2000,
+  "engine_update_count": 20,
+  "dca_state_final": "RECOVERY",
+  "state_sequence": [
+    "NORMAL",
+    "HOLDOVER",
+    "RECOVERY"
+  ],
+  "confidence_min": 0.6285035664843748,
+  "confidence_max": 0.98,
+  "confidence_final": 0.75,
+  "offset_us_avg": 83.11933725924328,
+  "offset_us_final": 106.06541199970957,
+  "offset_us_std": 23.4371540451736,
+  "drift_ppm_final": -8.170828771056662,
+  "drift_ppm_max_abs": 9.95619818649411,
+  "jitter_us_max_residual": 210.0,
+  "jitter_us_avg_residual": 88.73785670069046,
+  "holdover_duration_ms": 6000.0,
+  "mode_transition_latency_us": {
+    "first_holdover_time_us": 9000000,
+    "first_recovery_time_us": 16000000
+  },
+  "seq_gap_count": 0,
+  "pps_lost_event_count": 6,
+  "jitter_spike_event_count": 0
+}
