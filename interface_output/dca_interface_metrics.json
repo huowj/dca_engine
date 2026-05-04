@@ -1,0 +1,25 @@
+{
+  "input_csv": "dca_engine_sample_event.csv",
+  "total_rows": 615,
+  "event_type_count": {
+    "PPS_EDGE": 5,
+    "GNSS_STATUS": 7,
+    "IMU_SAMPLE": 601,
+    "PPS_LOST": 1,
+    "PPS_RECOVERY": 1
+  },
+  "pps_edge_count": 5,
+  "pps_lost_count": 1,
+  "pps_recovery_count": 1,
+  "imu_sample_count": 601,
+  "gnss_status_count": 7,
+  "seq_gap_marked_count": 1,
+  "loss_detected_count": 1,
+  "engine_update_count": 7,
+  "final_state": "NORMAL",
+  "final_offset_us": 0.0,
+  "final_drift_ppm": 0.0,
+  "final_confidence": 0.93,
+  "holdover_seen": false,
+  "recovery_seen": false
+}
