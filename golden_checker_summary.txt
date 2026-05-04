@@ -1,0 +1,45 @@
+=== GOLDEN CHECKER CANARY SUMMARY ===
+PASS count:
+877
+FAIL_DRIFT count:
+71
+FAIL_HOLDOVER count:
+11
+WARN count:
+41
+
+Sample PASS:
+0, offset=224.0, corrected=22, state=NORMAL, confidence=0.910, result=PASS
+100000, offset=193.0, corrected=100042, state=NORMAL, confidence=0.920, result=PASS
+200000, offset=232.0, corrected=200057, state=NORMAL, confidence=0.930, result=PASS
+300000, offset=276.0, corrected=300073, state=NORMAL, confidence=0.940, result=PASS
+400000, offset=188.0, corrected=400085, state=NORMAL, confidence=0.950, result=PASS
+500000, offset=188.0, corrected=500093, state=NORMAL, confidence=0.960, result=PASS
+600000, offset=278.0, corrected=600102, state=NORMAL, confidence=0.970, result=PASS
+700000, offset=238.0, corrected=700105, state=NORMAL, confidence=0.980, result=PASS
+800000, offset=176.0, corrected=800106, state=NORMAL, confidence=0.990, result=PASS
+900000, offset=227.0, corrected=900108, state=NORMAL, confidence=0.990, result=PASS
+
+Sample FAIL_DRIFT:
+22000000, offset=515.0, corrected=22000177, state=NORMAL, confidence=0.990, result=FAIL_DRIFT
+22500000, offset=504.0, corrected=22500194, state=NORMAL, confidence=0.990, result=FAIL_DRIFT
+22900000, offset=523.0, corrected=22900214, state=NORMAL, confidence=0.990, result=FAIL_DRIFT
+23100000, offset=520.0, corrected=23100220, state=NORMAL, confidence=0.990, result=FAIL_DRIFT
+23200000, offset=522.0, corrected=23200228, state=NORMAL, confidence=0.990, result=FAIL_DRIFT
+23400000, offset=647.0, corrected=23400242, state=NORMAL, confidence=0.990, result=FAIL_DRIFT
+23500000, offset=581.0, corrected=23500248, state=NORMAL, confidence=0.990, result=FAIL_DRIFT
+23700000, offset=579.0, corrected=23700260, state=NORMAL, confidence=0.990, result=FAIL_DRIFT
+23800000, offset=546.0, corrected=23800267, state=NORMAL, confidence=0.990, result=FAIL_DRIFT
+23900000, offset=632.0, corrected=23900273, state=NORMAL, confidence=0.990, result=FAIL_DRIFT
+
+Sample FAIL_HOLDOVER:
+45000000, offset=196.0, corrected=45000093, state=NORMAL, confidence=0.900, result=FAIL_HOLDOVER
+45100000, offset=247.0, corrected=45100093, state=NORMAL, confidence=0.900, result=FAIL_HOLDOVER
+45200000, offset=150.0, corrected=45200093, state=NORMAL, confidence=0.900, result=FAIL_HOLDOVER
+45300000, offset=225.0, corrected=45300093, state=NORMAL, confidence=0.900, result=FAIL_HOLDOVER
+45400000, offset=173.0, corrected=45400093, state=NORMAL, confidence=0.900, result=FAIL_HOLDOVER
+45500000, offset=160.0, corrected=45500093, state=NORMAL, confidence=0.900, result=FAIL_HOLDOVER
+45600000, offset=194.0, corrected=45600093, state=NORMAL, confidence=0.900, result=FAIL_HOLDOVER
+45700000, offset=148.0, corrected=45700093, state=NORMAL, confidence=0.900, result=FAIL_HOLDOVER
+45800000, offset=172.0, corrected=45800093, state=NORMAL, confidence=0.900, result=FAIL_HOLDOVER
+45900000, offset=140.0, corrected=45900093, state=NORMAL, confidence=0.900, result=FAIL_HOLDOVER
