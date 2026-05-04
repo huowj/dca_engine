@@ -55,6 +55,25 @@ class GoldenChecker:
     def __init__(self):
         self.results: List[ScenarioResult] = []
     
+    def check(self, offset_us, power_ok=True, pps_status=1):
+        """
+        单点金丝雀检查：
+        offset_us: 当前原始 offset = sensor_with_error - sensor_ideal
+        power_ok: 电压是否正常
+        pps_status: PPS 是否有效，1=有效，0=丢失
+        """
+
+        if not power_ok or pps_status == 0:
+            return "FAIL_HOLDOVER"
+
+        if abs(offset_us) > 500:
+            return "FAIL_DRIFT"
+
+        if abs(offset_us) < 300:
+            return "PASS"
+
+        return "WARN"
+
     def run_normal_scenario(self, engine: DCAEngine, events: List[Dict]) -> ScenarioResult:
         """验证 NORMAL 场景"""
         result = ScenarioResult(name="normal", passed=True, metrics={}, errors=[])
