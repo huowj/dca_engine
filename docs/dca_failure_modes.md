@@ -1,305 +1,589 @@
-# DCA Failure Modes
+# DCA Engine Failure Modes 说明
 
-## 1. Purpose
-
-This document defines DCA Engine warning and failure modes.
-
-The goal is to clearly answer:
-
-> Under what conditions should the corrected time output be considered degraded or untrusted?
-
-Failure modes are part of the engineering contract. They must be visible in metrics, replay output, and reports.
-
----
-
-## 2. Severity Levels
-
-| Level | Meaning | Engine Response |
-|---|---|---|
-| `INFO` | Normal operating information. | Continue normal operation. |
-| `WARN` | Abnormal condition detected, but time output may continue. | Reduce confidence and enter or remain in `DEGRADED`. |
-| `FAIL` | Trust boundary exceeded. | Enter `HOLDOVER`, block LOCKED, or mark output as not trusted. |
+> 本文档用于定义 DCA Engine 必须识别的 warning / failure mode。  
+> 重点是明确：
+>
+> - 什么情况下系统不能继续认为时间完全可信
+> - 哪些异常必须进入 metrics / report
+> - 哪些异常必须触发 DEGRADED
+> - 哪些异常必须阻止 LOCKED 或进入 HOLDOVER
+>
+> 本文档用于支撑 replay evidence、Trust Check、OEM evidence 和后续验收签字。
 
 ---
 
-## 3. Required Warning / Failure Modes
+## 1. Failure Mode 设计目标
 
-| Mode | Severity | Description |
-|---|---|---|
-| `WARN_JITTER` | WARN | PPS residual jitter exceeds threshold. |
-| `WARN_SEQ_GAP` | WARN | Input event sequence gap is detected. |
-| `FAIL_DRIFT` | FAIL | Drift estimate exceeds allowed trust boundary. |
-| `FAIL_HOLDOVER` | FAIL | HOLDOVER duration or confidence crosses the allowed trust boundary. |
+DCA Engine 不能只输出 corrected time，还必须说明：
+
+```text
+这个 corrected time 当前是否可信
+为什么可信
+为什么不可信
+如果不可信，是哪一种异常导致的
+```
+
+因此 failure mode 的目标是定义：
+
+> 系统在什么情况下必须 WARN、DEGRADE 或 FAIL。
 
 ---
 
-## 4. `WARN_JITTER`
+## 2. 严重级别定义
 
-### Trigger Condition
+| 级别 | 含义 | Engine 响应 |
+|------|------|-------------|
+| `INFO` | 正常信息 | 继续正常运行 |
+| `WARN` | 发现异常，但系统尚可继续输出时间 | 降低 confidence，进入或保持 DEGRADED |
+| `FAIL` | 超过可信边界，不能继续认为时间可信 | 进入 HOLDOVER，阻止 LOCKED，或标记输出不可信 |
 
-Triggered when:
+---
+
+## 3. 必须支持的 Failure / Warning Mode
+
+本阶段至少必须支持以下 4 类：
+
+| Mode | 级别 | 一句话定义 |
+|------|------|------------|
+| `WARN_JITTER` | WARN | PPS residual 抖动超过阈值 |
+| `WARN_SEQ_GAP` | WARN | 输入事件序列出现 gap |
+| `FAIL_DRIFT` | FAIL | drift 超出可信边界 |
+| `FAIL_HOLDOVER` | FAIL | HOLDOVER 时间过长或 confidence 过低 |
+
+可选扩展：
+
+| Mode | 级别 | 一句话定义 |
+|------|------|------------|
+| `WARN_DRIFT` | WARN | drift 接近异常但未超过失败阈值 |
+| `WARN_OUTLIER` | WARN | outlier 数量过多 |
+| `FAIL_PPS_LOST` | FAIL | PPS 丢失导致系统失去外部时间源 |
+
+---
+
+## 4. WARN_JITTER
+
+### 4.1 定义
+
+`WARN_JITTER` 表示 PPS residual 或 jitter 估计值超过允许阈值。
+
+### 4.2 触发条件
+
+满足以下任一条件触发：
 
 ```text
 abs(residual_us) > jitter_threshold_us
 ```
 
-or when estimated jitter exceeds the allowed threshold:
+或：
 
 ```text
 jitter_us > jitter_threshold_us
 ```
 
-### System Impact
-
-- PPS is present but not stable.
-- Offset updates may become noisy.
-- Drift estimation may be corrupted if raw residual changes are used directly.
-- Corrected time may still be monotonic but should not be treated as fully trusted.
-
-### DCA Engine Response
-
-The engine must:
-
-1. Emit `WARN_JITTER`.
-2. Reduce `confidence`.
-3. Enter or remain in `DEGRADED` unless already in `HOLDOVER`.
-4. Avoid allowing a single jitter spike to over-correct offset or drift.
-5. Keep replay deterministic.
-
-Recommended response:
+或：
 
 ```text
-state = DEGRADED
-confidence *= confidence_degraded_decay
-warnings += ["WARN_JITTER"]
+短时间内 outlier 数量超过 outlier_warn_count
 ```
 
-### Exit Condition
+### 4.3 对系统的影响
 
-Clear `WARN_JITTER` only after:
+jitter spike 可能导致：
+
+- offset observer 被异常点拉偏
+- drift observer 估计错误
+- corrected time 短时抖动
+- confidence 被高估
+
+因此 jitter spike 不能被静默忽略。
+
+### 4.4 DCA Engine 响应
+
+触发 `WARN_JITTER` 后，Engine 必须：
+
+1. 在输出中加入 `WARN_JITTER`
+2. 在 metrics 中累计 `warn_jitter_count`
+3. 降低 confidence
+4. 进入或保持 `DEGRADED`
+5. 不允许单个 jitter spike 直接污染 offset / drift
+6. 保持 `corrected_time_us` 单调递增
+
+推荐响应：
+
+```text
+warnings += ["WARN_JITTER"]
+confidence *= jitter_confidence_penalty
+state = DEGRADED
+```
+
+### 4.5 退出条件
+
+只有连续稳定样本达到要求后才能清除：
 
 ```text
 jitter_us <= jitter_threshold_us
-for degraded_clear_count consecutive valid PPS samples
+stable_pps_counter >= stable_required_pps
 ```
 
 ---
 
-## 5. `WARN_SEQ_GAP`
+## 5. WARN_SEQ_GAP
 
-### Trigger Condition
+### 5.1 定义
 
-Triggered when the input interface marks a sequence gap:
+`WARN_SEQ_GAP` 表示输入事件流出现 sequence gap，DCA Engine 无法证明事件连续性。
+
+### 5.2 触发条件
+
+满足以下任一条件触发：
 
 ```text
-seq_gap == true
+seq_gap_detected == true
 ```
 
-or when event sequence numbers are non-contiguous:
+或：
+
+```text
+seq_gap 字段非空
+```
+
+或：
 
 ```text
 current_seq_num != previous_seq_num + 1
 ```
 
-when sequence tracking is enabled.
+其中是否使用 `seq_num` 自动判断，可根据 interface spec 决定。
 
-### System Impact
+### 5.3 对系统的影响
 
-- The event stream is incomplete.
-- The state history may be missing important timing evidence.
-- Confidence must decrease because the engine cannot prove continuity.
-- Even if PPS is present, the trust model must reflect missing data.
+seq gap 表示：
 
-### DCA Engine Response
+- 中间事件可能丢失
+- replay evidence 不完整
+- 状态连续性无法完全证明
+- confidence 不能保持高可信
 
-The engine must:
+即使 PPS 当前存在，seq gap 仍然必须进入 metrics。
 
-1. Emit `WARN_SEQ_GAP`.
-2. Record the event in metrics.
-3. Reduce `confidence`.
-4. Enter or remain in `DEGRADED`, unless the system is already in `HOLDOVER`.
-5. Preserve monotonic corrected time.
+### 5.4 DCA Engine 响应
 
-Recommended response:
+触发 `WARN_SEQ_GAP` 后，Engine 必须：
+
+1. 在输出中加入 `WARN_SEQ_GAP`
+2. 在 metrics 中累计 `warn_seq_gap_count`
+3. 降低 confidence
+4. 推荐进入或保持 `DEGRADED`
+5. 保留 corrected time monotonic guarantee
+
+推荐响应：
 
 ```text
 warnings += ["WARN_SEQ_GAP"]
 confidence *= seq_gap_confidence_penalty
-state = DEGRADED if PPS is still present
+state = DEGRADED
 ```
 
-### Exit Condition
+### 5.5 退出条件
 
-Clear `WARN_SEQ_GAP` only after:
+推荐清除条件：
 
 ```text
-no seq gap for degraded_clear_count consecutive events
+连续 degraded_clear_count 个事件未再出现 seq gap
 ```
 
-or after replay segment boundary reset, if explicitly defined by test spec.
+或：
+
+```text
+进入新的 replay segment，且 spec 明确允许重置 seq gap 状态
+```
 
 ---
 
-## 6. `FAIL_DRIFT`
+## 6. WARN_DRIFT
 
-### Trigger Condition
+### 6.1 定义
 
-Triggered when drift exceeds the hard trust boundary:
+`WARN_DRIFT` 表示 drift 已超过正常观测范围，但尚未达到 failure 边界。
+
+### 6.2 触发条件
+
+```text
+abs(drift_ppm) > drift_ppm_warn_threshold
+```
+
+并且：
+
+```text
+abs(drift_ppm) <= drift_ppm_limit
+```
+
+### 6.3 对系统的影响
+
+drift 异常说明：
+
+- board clock 可能存在频偏
+- holdover 预测误差会增大
+- offset 修正可能需要更谨慎
+- confidence 不能维持 LOCKED 高值
+
+### 6.4 DCA Engine 响应
+
+推荐响应：
+
+```text
+warnings += ["WARN_DRIFT"]
+confidence *= drift_confidence_penalty
+state = DEGRADED
+```
+
+### 6.5 退出条件
+
+```text
+abs(drift_ppm) <= drift_ppm_warn_threshold
+stable_pps_counter >= stable_required_pps
+```
+
+---
+
+## 7. FAIL_DRIFT
+
+### 7.1 定义
+
+`FAIL_DRIFT` 表示 drift 超过系统可信边界，不能继续按 LOCKED 状态信任 corrected time。
+
+### 7.2 触发条件
+
+满足以下任一条件触发：
 
 ```text
 abs(drift_ppm) > drift_ppm_limit
 ```
 
-or when drift remains above warning threshold for too long:
+或：
 
 ```text
 abs(drift_ppm) > drift_ppm_warn_threshold
-for drift_fail_count consecutive updates
+持续 drift_fail_count 次更新
 ```
 
-### System Impact
+### 7.3 对系统的影响
 
-- Board clock behavior is outside expected range.
-- HOLDOVER prediction may become unreliable.
-- Offset correction may not be enough to guarantee trusted time.
-- Continued LOCKED operation would overstate trust.
+FAIL_DRIFT 表示：
 
-### DCA Engine Response
+- board clock 漂移超出合理范围
+- holdover 预测可能不可信
+- offset / drift 估计可能已经失真
+- 系统不能继续保持 LOCKED
 
-The engine must:
+### 7.4 DCA Engine 响应
 
-1. Emit `FAIL_DRIFT`.
-2. Prevent entry into `LOCKED`.
-3. Enter `DEGRADED` if PPS is present but drift is abnormal.
-4. Enter `HOLDOVER` if PPS is missing or drift makes prediction untrusted.
-5. Reduce confidence aggressively.
+触发 `FAIL_DRIFT` 后，Engine 必须：
 
-Recommended response:
+1. 输出 `failure_mode = "FAIL_DRIFT"`
+2. 阻止进入 `LOCKED`
+3. 降低 confidence
+4. 如果 PPS 仍存在，进入或保持 `DEGRADED`
+5. 如果 PPS 同时丢失，进入 `HOLDOVER`
+6. 继续保证 corrected time 单调
+
+推荐响应：
 
 ```text
 failure_mode = "FAIL_DRIFT"
-confidence = min(confidence, degraded_confidence_cap)
-state = DEGRADED or HOLDOVER depending on PPS availability
+confidence = min(confidence, conf_degraded_cap)
+
+if pps_available:
+    state = DEGRADED
+else:
+    state = HOLDOVER
 ```
 
-### Exit Condition
+### 7.5 退出条件
 
-Clear `FAIL_DRIFT` only after:
+只有 drift 回到可接受范围，并经过 RECOVERY 验证后才能清除：
 
 ```text
 abs(drift_ppm) <= drift_ppm_warn_threshold
-for recovery_lock_count consecutive stable PPS samples
+stable_pps_counter >= stable_required_pps
+state == RECOVERY or LOCKED
 ```
 
-The engine must pass through `RECOVERY` before returning to `LOCKED`.
+注意：
+
+```text
+FAIL_DRIFT 清除后不能直接跳过 RECOVERY
+```
 
 ---
 
-## 7. `FAIL_HOLDOVER`
+## 8. FAIL_HOLDOVER
 
-### Trigger Condition
+### 8.1 定义
 
-Triggered when HOLDOVER becomes too long or too uncertain:
+`FAIL_HOLDOVER` 表示系统处于 HOLDOVER 太久，或 HOLDOVER 期间 confidence 已低于可接受边界。
 
-```text
-state == HOLDOVER
-and holdover_duration_us > max_holdover_duration_us
-```
+### 8.2 触发条件
 
-or:
+满足以下任一条件触发：
 
 ```text
 state == HOLDOVER
-and confidence < min_holdover_confidence
+holdover_duration_us > max_holdover_duration_us
 ```
 
-### System Impact
+或：
 
-- PPS is unavailable.
-- Corrected time is based only on prediction.
-- Prediction uncertainty grows over time.
-- The system can no longer honestly claim high trust.
+```text
+state == HOLDOVER
+confidence < min_holdover_confidence
+```
 
-### DCA Engine Response
+或：
 
-The engine must:
+```text
+PPS 丢失持续时间超过系统允许范围
+```
 
-1. Emit `FAIL_HOLDOVER`.
-2. Keep corrected time monotonic.
-3. Keep state in `HOLDOVER` until valid PPS returns.
-4. Mark confidence as low.
-5. Prevent immediate jump to `LOCKED` after PPS returns; require `RECOVERY`.
+### 8.3 对系统的影响
 
-Recommended response:
+FAIL_HOLDOVER 表示：
+
+- PPS 已不可用
+- corrected time 只依赖预测
+- 预测误差会随时间积累
+- 下游系统不能继续按可信时间使用
+
+### 8.4 DCA Engine 响应
+
+触发 `FAIL_HOLDOVER` 后，Engine 必须：
+
+1. 输出 `failure_mode = "FAIL_HOLDOVER"`
+2. 保持或进入 `HOLDOVER`
+3. 持续降低 confidence
+4. 保证 corrected time 单调
+5. PPS 恢复后必须进入 `RECOVERY`，不能直接进入 `LOCKED`
+
+推荐响应：
 
 ```text
 failure_mode = "FAIL_HOLDOVER"
 state = HOLDOVER
-confidence = max(confidence_floor, confidence * confidence_holdover_decay)
+confidence = max(confidence_floor,
+                 confidence * conf_holdover_decay)
 ```
 
-### Exit Condition
+### 8.5 退出条件
 
-Clear `FAIL_HOLDOVER` only when:
+必须满足：
 
 ```text
-valid PPS returns
-and state enters RECOVERY
-and stable PPS count reaches recovery_lock_count
+PPS_RECOVERY 或 valid PPS 恢复
+```
+
+然后进入：
+
+```text
+RECOVERY
+```
+
+并且连续稳定 PPS 达标后：
+
+```text
+RECOVERY -> LOCKED
 ```
 
 ---
 
-## 8. Failure Mode Interaction
+## 9. FAIL_PPS_LOST（可选但建议）
 
-Multiple warnings or failures may exist at the same time.
+### 9.1 定义
 
-Recommended priority:
+`FAIL_PPS_LOST` 表示 PPS 信号丢失，系统失去外部时间参考。
 
-```text
-FAIL_HOLDOVER > FAIL_DRIFT > WARN_SEQ_GAP > WARN_JITTER
-```
-
-State priority:
+### 9.2 触发条件
 
 ```text
-PPS lost      -> HOLDOVER
-PPS returned  -> RECOVERY
-Hard failure  -> HOLDOVER or DEGRADED
-Warning only  -> DEGRADED
-Stable normal -> LOCKED
+PPS_LOST
 ```
 
-Confidence should reflect the worst active condition.
+或：
+
+```text
+time_since_last_valid_pps > pps_loss_threshold_s
+```
+
+### 9.3 对系统的影响
+
+- 系统不能继续维持 LOCKED
+- offset 不能继续依赖 PPS 更新
+- drift 预测成为 holdover 的主要依据
+- confidence 必须下降
+
+### 9.4 DCA Engine 响应
+
+```text
+failure_mode = "FAIL_PPS_LOST"
+state = HOLDOVER
+enter_holdover()
+confidence *= conf_holdover_decay
+```
 
 ---
 
-## 9. Metrics Requirements
+## 10. 多个 Failure Mode 同时存在时的优先级
 
-Every run should report:
+多个异常可能同时发生，例如：
 
-| Metric | Meaning |
-|---|---|
-| `warn_jitter_count` | Number of jitter warnings. |
-| `warn_seq_gap_count` | Number of seq gap warnings. |
-| `fail_drift_count` | Number of drift failures. |
-| `fail_holdover_count` | Number of holdover failures. |
-| `degraded_seen` | Whether DEGRADED occurred. |
-| `holdover_seen` | Whether HOLDOVER occurred. |
-| `recovery_seen` | Whether RECOVERY occurred. |
-| `locked_seen` | Whether LOCKED occurred. |
-| `min_confidence` | Lowest confidence in replay. |
-| `final_confidence` | Final confidence after replay. |
+```text
+PPS_LOST + drift 异常
+PPS_LOST + seq gap
+jitter spike + drift 异常
+```
+
+推荐优先级：
+
+```text
+FAIL_HOLDOVER
+> FAIL_PPS_LOST
+> FAIL_DRIFT
+> WARN_SEQ_GAP
+> WARN_JITTER
+> WARN_DRIFT
+```
+
+状态优先级：
+
+```text
+PPS 丢失      -> HOLDOVER
+PPS 恢复      -> RECOVERY
+硬失败        -> HOLDOVER 或 DEGRADED
+普通 warning  -> DEGRADED
+稳定正常      -> LOCKED
+```
+
+confidence 应按最严重异常处理，不能只按较轻异常计算。
 
 ---
 
-## 10. Acceptance Checklist
+## 11. Metrics 输出要求
 
-| Failure Mode | Must Be Detected | Must Affect Confidence | Must Affect State |
-|---|---:|---:|---:|
-| `WARN_JITTER` | Yes | Yes | Yes, DEGRADED |
-| `WARN_SEQ_GAP` | Yes | Yes | Yes, DEGRADED |
-| `FAIL_DRIFT` | Yes | Yes | Yes, DEGRADED or HOLDOVER |
-| `FAIL_HOLDOVER` | Yes | Yes | Yes, HOLDOVER |
+每次 replay / mock / interface alignment 后，建议输出以下 metrics：
 
-The engine must not silently absorb these conditions.
+| 字段 | 含义 |
+|------|------|
+| `warn_jitter_count` | jitter warning 次数 |
+| `warn_seq_gap_count` | seq gap warning 次数 |
+| `warn_drift_count` | drift warning 次数 |
+| `fail_drift_count` | drift failure 次数 |
+| `fail_holdover_count` | holdover failure 次数 |
+| `fail_pps_lost_count` | PPS lost failure 次数 |
+| `degraded_seen` | 是否进入过 DEGRADED |
+| `holdover_seen` | 是否进入过 HOLDOVER |
+| `recovery_seen` | 是否进入过 RECOVERY |
+| `locked_seen` | 是否进入过 LOCKED |
+| `min_confidence` | replay 期间最低 confidence |
+| `final_confidence` | 最终 confidence |
+| `final_state` | 最终状态 |
+
+---
+
+## 12. Failure Mode 与状态机关系
+
+| Mode | 推荐状态变化 | confidence 变化 |
+|------|--------------|----------------|
+| `WARN_JITTER` | `LOCKED -> DEGRADED` | 下降 |
+| `WARN_SEQ_GAP` | `LOCKED -> DEGRADED` | 下降 |
+| `WARN_DRIFT` | `LOCKED -> DEGRADED` | 下降 |
+| `FAIL_DRIFT` | 阻止 `LOCKED`，进入 `DEGRADED` 或 `HOLDOVER` | 明显下降 |
+| `FAIL_HOLDOVER` | 保持 `HOLDOVER` | 持续下降 |
+| `FAIL_PPS_LOST` | 进入 `HOLDOVER` | 持续下降 |
+
+---
+
+## 13. 验收 Checklist
+
+| Failure / Warning | 必须识别 | 必须进入 metrics | 必须影响 confidence | 必须影响 state | 当前结论 |
+|-------------------|----------|------------------|---------------------|----------------|----------|
+| `WARN_JITTER` | 是 | 是 | 是 | 是，进入 DEGRADED | `___` |
+| `WARN_SEQ_GAP` | 是 | 是 | 是 | 是，进入 DEGRADED 或至少明确 metrics | `___` |
+| `WARN_DRIFT` | 建议 | 是 | 是 | 是，进入 DEGRADED | `___` |
+| `FAIL_DRIFT` | 是 | 是 | 是 | 是，阻止 LOCKED | `___` |
+| `FAIL_HOLDOVER` | 是 | 是 | 是 | 是，保持 HOLDOVER | `___` |
+| `FAIL_PPS_LOST` | 建议 | 是 | 是 | 是，进入 HOLDOVER | `___` |
+
+---
+
+## 14. 需要验证的场景
+
+建议通过以下 scenario 验证 failure mode：
+
+### 14.1 jitter_spike
+
+验证：
+
+```text
+WARN_JITTER
+confidence 下降
+state -> DEGRADED
+offset / drift 不被单点污染
+```
+
+### 14.2 seq_gap
+
+验证：
+
+```text
+WARN_SEQ_GAP
+seq_gap 进入 metrics
+confidence 下降
+state -> DEGRADED 或明确记录 metrics
+```
+
+### 14.3 drift_slow
+
+验证：
+
+```text
+WARN_DRIFT 或 FAIL_DRIFT
+confidence 下降
+阻止不合理 LOCKED
+```
+
+### 14.4 pps_lost_holdover
+
+验证：
+
+```text
+PPS_LOST
+state -> HOLDOVER
+confidence 持续下降
+必要时 FAIL_HOLDOVER
+```
+
+### 14.5 pps_recovery
+
+验证：
+
+```text
+HOLDOVER -> RECOVERY
+RECOVERY -> LOCKED
+不能 HOLDOVER 直接 LOCKED
+```
+
+---
+
+## 15. 本阶段结论
+
+DCA Engine 的 failure mode 设计目标是：
+
+```text
+不静默吞掉异常
+不在异常时假装稳定
+不在 PPS 丢失后继续高 confidence
+不在证据不完整时继续 LOCKED
+```
+
+最终要证明：
+
+> DCA Engine 不仅能输出时间，也能说明什么时候这个时间不能被完全信任。
