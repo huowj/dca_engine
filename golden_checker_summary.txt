@@ -1,4 +1,16 @@
 === GOLDEN CHECKER CANARY SUMMARY ===
+
+[VALIDATION SCOPE]
+
+Current results are Round 4 interface alignment / mock scenario acceptance only.
+They are not Authority Mode PASS and are not real hardware evidence.
+
+当前结果仅属于 Round 4 interface alignment / mock scenario acceptance。
+不代表 Authority Mode PASS，也不代表真实硬件证据。
+
+This summary is generated from mock scenarios and interface replay outputs.
+It must not be used as hardware authority validation evidence.
+
 PASS count:
 877
 FAIL_DRIFT count:

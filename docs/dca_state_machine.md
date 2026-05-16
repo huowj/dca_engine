@@ -1,3 +1,15 @@
+# Round 4 State Machine Scope
+
+本轮 Round 4 验收以当前代码中的 3-state model 为准：
+
+- NORMAL
+- HOLDOVER
+- RECOVERY
+
+INIT / LOCKED / DEGRADED 如在文档中出现，仅表示后续 Authority Mode / trust model 扩展设计，不作为当前 Round 4 行为验收依据。
+
+当前状态机验证仅属于 mock scenario acceptance，不代表真实硬件 Authority Mode PASS。
+
 # DCA Engine 状态机说明
 
 > 本文档用于定义 DCA Engine 的状态机行为边界。  

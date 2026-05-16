@@ -1,3 +1,20 @@
+# Validation Scope Notice
+
+当前参数说明仅服务于 **Round 4 interface alignment / mock scenario acceptance**。
+
+本文件解释当前 mock validation 阶段使用的参数选择依据，包括：
+
+- EMA alpha
+- jitter threshold
+- PPS missing timeout
+- relock stable PPS count
+- confidence decay
+- drift smoothing / drift clamp
+
+当前参数验证基于 mock scenario 和 interface replay 输出，**不代表 Authority Mode PASS**，也 **不代表真实硬件证据**。
+
+后续进入真实硬件 Authority Mode 前，必须重新基于硬件 PPS、IMU、GNSS、CAN/PHY 时间戳数据进行验证。
+
 # DCA Engine 参数选择理由
 
 > **霍工填写说明**：每个参数填写你选择的数值，并解释为什么选这个值（物理意义 + 实测效果）
