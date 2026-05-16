@@ -121,7 +121,12 @@ def main():
                 metrics["engine_update_count"] += 1
 
             else:
-                corrected = int(engine.compute_time(board_time_us))
+                # Non-PPS events do not update the DCA observer,
+                # but their output timestamp must still obey the global monotonic contract.
+                candidate = int(engine.compute_time(board_time_us))
+                corrected = max(candidate, engine.last_output_time + 1)
+                engine.last_output_time = corrected
+
                 output = {
                     "corrected_time_us": corrected,
                     "state": engine.state.name,
@@ -145,7 +150,7 @@ def main():
                 "loss_detected": row.get("loss_detected", ""),
                 "input_sync_state": row.get("sync_state", ""),
                 "dca_state": output["state"],
-                "dca_corrected_time_us": output["corrected_time_us"],
+                "dca_corrected_time_us": int(output["corrected_time_us"]),
                 "dca_offset_us": output["offset_us"],
                 "dca_drift_ppm": output["drift_ppm"],
                 "dca_confidence": output["confidence"],
