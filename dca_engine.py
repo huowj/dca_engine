@@ -134,7 +134,12 @@ class DCAEngine:
             "offset_us": self.offset_us,
             "drift_ppm": self.drift_ppm,
             "confidence": self.confidence,
-            "residual": residual
+            "residual": residual,
+
+            # Evidence fields for Round 4 mock/interface validation
+            "outlier": outlier,
+            "valid_pps": valid_pps,
+            "stable_pps": stable_pps,
         }
 
     # ------------------------------

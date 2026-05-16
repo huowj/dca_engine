@@ -24,7 +24,13 @@
     },
     "seq_gap_count": 0,
     "pps_lost_event_count": 0,
-    "jitter_spike_event_count": 0
+    "jitter_spike_event_count": 0,
+    "injected_outlier_count": 0,
+    "detected_outlier_count": 0,
+    "outlier_rejected_count": 0,
+    "outlier_rejection_rate": null,
+    "valid_pps_count": 20,
+    "stable_pps_count": 5
   },
   "pps_lost_holdover": {
     "scenario": "pps_lost_holdover",
@@ -53,7 +59,13 @@
     },
     "seq_gap_count": 0,
     "pps_lost_event_count": 6,
-    "jitter_spike_event_count": 0
+    "jitter_spike_event_count": 0,
+    "injected_outlier_count": 0,
+    "detected_outlier_count": 0,
+    "outlier_rejected_count": 0,
+    "outlier_rejection_rate": null,
+    "valid_pps_count": 14,
+    "stable_pps_count": 3
   },
   "pps_recovery": {
     "scenario": "pps_recovery",
@@ -82,7 +94,13 @@
     },
     "seq_gap_count": 0,
     "pps_lost_event_count": 6,
-    "jitter_spike_event_count": 0
+    "jitter_spike_event_count": 0,
+    "injected_outlier_count": 0,
+    "detected_outlier_count": 0,
+    "outlier_rejected_count": 0,
+    "outlier_rejection_rate": null,
+    "valid_pps_count": 19,
+    "stable_pps_count": 6
   },
   "seq_gap": {
     "scenario": "seq_gap",
@@ -109,7 +127,13 @@
     },
     "seq_gap_count": 1,
     "pps_lost_event_count": 0,
-    "jitter_spike_event_count": 0
+    "jitter_spike_event_count": 0,
+    "injected_outlier_count": 0,
+    "detected_outlier_count": 0,
+    "outlier_rejected_count": 0,
+    "outlier_rejection_rate": null,
+    "valid_pps_count": 19,
+    "stable_pps_count": 9
   },
   "jitter_spike": {
     "scenario": "jitter_spike",
@@ -136,7 +160,13 @@
     },
     "seq_gap_count": 0,
     "pps_lost_event_count": 0,
-    "jitter_spike_event_count": 3
+    "jitter_spike_event_count": 3,
+    "injected_outlier_count": 3,
+    "detected_outlier_count": 3,
+    "outlier_rejected_count": 3,
+    "outlier_rejection_rate": 1.0,
+    "valid_pps_count": 17,
+    "stable_pps_count": 5
   },
   "drift_slow": {
     "scenario": "drift_slow",
@@ -163,6 +193,12 @@
     },
     "seq_gap_count": 0,
     "pps_lost_event_count": 0,
-    "jitter_spike_event_count": 0
+    "jitter_spike_event_count": 0,
+    "injected_outlier_count": 0,
+    "detected_outlier_count": 0,
+    "outlier_rejected_count": 0,
+    "outlier_rejection_rate": null,
+    "valid_pps_count": 40,
+    "stable_pps_count": 0
   }
 }

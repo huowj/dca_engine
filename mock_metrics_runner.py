@@ -113,6 +113,12 @@ def run_engine(events):
         # 当前 DCAEngine 主要吃 PPS；非 PPS 只在 PPS_LOST 时用于触发 holdover
         should_update = e["pps_status"] == 1 or e["event_type"] == "PPS_LOST"
 
+        # Mock 注入 outlier 的证据标记
+        injected_outlier = (
+            bool(e.get("is_outlier", False))
+            or e.get("event_type") in {"JITTER_SPIKE", "OUTLIER", "PPS_JITTER"}
+        )
+
         if should_update:
             out = engine.update(
                 board_time_us=int(e["board_time_us"]),
@@ -120,13 +126,31 @@ def run_engine(events):
                 is_pps=bool(e["pps_status"]),
             )
 
+            detected_outlier = bool(out.get("outlier", False))
+            valid_pps = bool(out.get("valid_pps", False))
+            stable_pps = bool(out.get("stable_pps", False))
+
+            # 注入 outlier 且 engine 判定 outlier，并且没有作为 valid PPS 接收，
+            # 就算 outlier 被拒绝。
+            outlier_rejected = injected_outlier and detected_outlier and not valid_pps
+
             if out["state"] == "HOLDOVER" and first_holdover_time is None:
                 first_holdover_time = e["time_us"]
 
             if out["state"] == "RECOVERY" and first_recovery_time is None:
                 first_recovery_time = e["time_us"]
 
-            outputs.append({**e, **out})
+            outputs.append({
+                **e,
+                **out,
+
+                # Explicit evidence fields for acceptance review
+                "injected_outlier": injected_outlier,
+                "detected_outlier": detected_outlier,
+                "outlier_rejected": outlier_rejected,
+                "valid_pps": valid_pps,
+                "stable_pps": stable_pps,
+            })
 
         if last_seq is not None and e["seq"] != last_seq + 1:
             seq_gap_count += 1
@@ -143,6 +167,36 @@ def calc_metrics(name, events, outputs, seq_gap_count, first_holdover_time, firs
     states = [o["state"] for o in outputs]
 
     holdover_samples = [o for o in outputs if o["state"] == "HOLDOVER"]
+
+    injected_outlier_count = sum(
+        1 for o in outputs
+        if bool(o.get("injected_outlier", False))
+    )
+
+    detected_outlier_count = sum(
+        1 for o in outputs
+        if bool(o.get("detected_outlier", False))
+    )
+
+    outlier_rejected_count = sum(
+        1 for o in outputs
+        if bool(o.get("outlier_rejected", False))
+    )
+
+    valid_pps_count = sum(
+        1 for o in outputs
+        if bool(o.get("valid_pps", False))
+    )
+
+    stable_pps_count = sum(
+        1 for o in outputs
+        if bool(o.get("stable_pps", False))
+    )
+
+    outlier_rejection_rate = (
+        outlier_rejected_count / injected_outlier_count
+        if injected_outlier_count > 0 else None
+    )
 
     metrics = {
         "scenario": name,
@@ -179,6 +233,16 @@ def calc_metrics(name, events, outputs, seq_gap_count, first_holdover_time, firs
         "seq_gap_count": seq_gap_count,
         "pps_lost_event_count": sum(1 for e in events if e["event_type"] == "PPS_LOST"),
         "jitter_spike_event_count": sum(1 for e in events if e["event_type"] == "JITTER_SPIKE"),
+
+        # Outlier evidence metrics
+        "injected_outlier_count": injected_outlier_count,
+        "detected_outlier_count": detected_outlier_count,
+        "outlier_rejected_count": outlier_rejected_count,
+        "outlier_rejection_rate": outlier_rejection_rate,
+
+        # PPS evidence metrics
+        "valid_pps_count": valid_pps_count,
+        "stable_pps_count": stable_pps_count,
     }
 
     return metrics

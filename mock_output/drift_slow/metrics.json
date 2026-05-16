@@ -23,5 +23,11 @@
   },
   "seq_gap_count": 0,
   "pps_lost_event_count": 0,
-  "jitter_spike_event_count": 0
+  "jitter_spike_event_count": 0,
+  "injected_outlier_count": 0,
+  "detected_outlier_count": 0,
+  "outlier_rejected_count": 0,
+  "outlier_rejection_rate": null,
+  "valid_pps_count": 40,
+  "stable_pps_count": 0
 }
