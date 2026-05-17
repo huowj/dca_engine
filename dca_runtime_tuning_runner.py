@@ -22,7 +22,21 @@ from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 
 # 导入核心算法（只导入，不修改）
-from dca_engine import DCAEngine
+from dca_engine import DCAEngine, SyncState
+
+
+class ConfigurableDCAEngine(DCAEngine):
+    """
+    Thin config adapter.
+
+    不改变 DCAEngine 行为语义，
+    只允许 tuning runner 注入参数。
+    """
+
+    def __init__(self, params):
+        super().__init__()
+
+        self.params = params
 
 
 # ============================================================
@@ -183,9 +197,9 @@ class DCATuningRunner:
     def _create_engine(self):
         """创建DCAEngine实例（只通过参数配置）"""
         if self._engine_class is None:
-            self._engine_class = DCAEngine
+            self._engine_class = ConfigurableDCAEngine
 
-        self._engine = self._engine_class()
+        self._engine = self._engine_class(self.params)
         return self._engine
     
     def run(self, reset: bool = True) -> DCAMetrics:

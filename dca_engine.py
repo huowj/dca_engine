@@ -45,7 +45,10 @@ class DCAEngine:
         return valid_pps and abs(residual) < 100
 
     def is_outlier(self, residual):
-        return abs(residual) > max(300, 3 * self.sigma)
+        return abs(residual) > max(
+            self.params.outlier_threshold_us,
+            3 * self.sigma
+        )
 
     # ------------------------------
     # UPDATE ENTRY
@@ -87,7 +90,9 @@ class DCAEngine:
         # ---- PPS loss ----
         pps_lost = False
         if self.last_valid_pps_time is not None:
-            if board_time_us - self.last_valid_pps_time > 1_500_000:
+            if board_time_us - self.last_valid_pps_time > (
+                self.params.pps_timeout_holdover * 1_000_000
+            ):
                 pps_lost = True
 
         # ------------------------------
@@ -99,14 +104,14 @@ class DCAEngine:
                 self.enter_holdover(board_time_us)
 
         elif self.state == SyncState.HOLDOVER:
-            if self.valid_pps_counter >= 3:
+            if self.valid_pps_counter >= self.params.recovery_stable_pps_count:
                 self.state = SyncState.RECOVERY
 
         elif self.state == SyncState.RECOVERY:
             if pps_lost or self.outlier_counter > 5:
                 self.state = SyncState.HOLDOVER
                 self.enter_holdover(board_time_us)
-            elif self.stable_pps_counter >= 3:
+            elif self.stable_pps_counter >= self.params.recovery_stable_pps_count:
                 self.state = SyncState.NORMAL
 
         # ------------------------------
@@ -153,9 +158,9 @@ class DCAEngine:
         median = sorted(self.offset_buffer)[len(self.offset_buffer)//2]
 
         if self.state == SyncState.NORMAL:
-            alpha = 0.1
+            alpha = self.params.ema_alpha_normal
         elif self.state == SyncState.RECOVERY:
-            alpha = 0.5
+            alpha = self.params.ema_alpha_recovery
         else:
             alpha = 0.01
 
@@ -179,14 +184,17 @@ class DCAEngine:
         drift = (delta / dt) * 1e6
 
         if self.state == SyncState.NORMAL:
-            alpha = 0.05
+            alpha = self.params.drift_smoothing_factor
         elif self.state == SyncState.RECOVERY:
-            alpha = 0.1
+            alpha = self.params.drift_smoothing_factor
         else:
             alpha = 0.001
 
         self.drift_ppm += alpha * (drift - self.drift_ppm)
-        self.drift_ppm = max(min(self.drift_ppm, 50), -50)
+        self.drift_ppm = max(
+            min(self.drift_ppm, self.params.drift_clamp_ppm),
+            -self.params.drift_clamp_ppm
+        )
 
         self.last_residual = residual
         self.last_time = now_us
@@ -205,11 +213,11 @@ class DCAEngine:
             self.confidence = min(0.99, 0.9 + 0.01 * self.valid_pps_counter)
 
         elif self.state == SyncState.RECOVERY:
-            self.confidence = min(0.9, 0.7 + 0.05 * self.stable_pps_counter)
+            self.confidence = min(0.9, 0.7 + (self.params.confidence_recovery_rate * self.stable_pps_counter))
 
         elif self.state == SyncState.HOLDOVER:
             if self.holdover_start_time is not None:
-                decay = 0.95
+                decay = 1.0 - self.params.confidence_decay_rate
                 self.confidence *= decay
 
         self.confidence = max(0.01, min(self.confidence, 0.99))
@@ -227,7 +235,7 @@ class DCAEngine:
     def compute_time(self, board_time_us):
         if self.state == SyncState.HOLDOVER:
             dt = board_time_us - self.holdover_start_time
-            predicted = self.holdover_offset + (self.drift_ppm * dt / 1e6)
+            predicted = self.holdover_offset + (self.params.holdover_drift_gain * self.drift_ppm * dt / 1e6)
             return board_time_us + predicted
         else:
             return board_time_us + self.offset_us
