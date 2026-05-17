@@ -1,0 +1,13 @@
+{
+  "ema_alpha_normal": 0.08,
+  "ema_alpha_recovery": 0.03,
+  "drift_smoothing_factor": 0.1,
+  "pps_timeout_holdover": 1.5,
+  "pps_timeout_lost": 5.0,
+  "recovery_stable_pps_count": 5,
+  "outlier_threshold_us": 1000.0,
+  "confidence_decay_rate": 0.01,
+  "confidence_recovery_rate": 0.05,
+  "drift_clamp_ppm": 100.0,
+  "holdover_drift_gain": 0.5
+}

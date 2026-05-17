@@ -1,0 +1,7 @@
+{
+  "csv_file": "dca_runtime_events/dca_runtime_event_round5_4hr.csv",
+  "input_sha256": "ffa142b7d20c72ee2fd9cdf4fc0e0ffe09a3e353203b678c3dfa1301a24beb88",
+  "row_count": 18473,
+  "pps_events": 18471,
+  "imu_events": 2
+}

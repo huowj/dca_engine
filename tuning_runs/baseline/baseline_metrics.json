@@ -1,0 +1,21 @@
+{
+  "total_events": 18473,
+  "pps_events": 18471,
+  "imu_events": 2,
+  "pps_lost_count": 1,
+  "pps_recovery_count": 1,
+  "outlier_rejected_count": 0,
+  "seq_gap_count": 0,
+  "max_drift_ppm": 0.04999995000005,
+  "mean_drift_ppm": 0.00048719631353952216,
+  "max_offset_us": 0.0,
+  "mean_offset_us": 0.0,
+  "state_duration": {
+    "NORMAL": 18486.104207,
+    "HOLDOVER": 4.895793,
+    "RECOVERY": 1.0
+  },
+  "monotonic_violations": 0,
+  "holdover_jump_us": 0.0,
+  "recovery_jump_us": 0.0
+}

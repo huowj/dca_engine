@@ -381,6 +381,8 @@ class DCATuningRunner:
             signatures.append(sig)
 
         is_det = len(set(signatures)) == 1
+        self._last_deterministic_signatures = signatures
+        self._last_deterministic_pass = is_det
         return is_det, signatures
 
     
@@ -398,16 +400,145 @@ class DCATuningRunner:
             json.dump(metrics.to_dict(), f, indent=2)
 
 
+    def save_trace(self, path: Path):
+        """保存完整 replay trace"""
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(path, "w") as f:
+            json.dump(self._last_outputs, f, indent=2)
+
+
+    def save_deterministic_verification(self, path: Path):
+        """保存 deterministic verification"""
+
+        payload = {
+            "passed": getattr(self, "_last_deterministic_pass", False),
+            "signatures": getattr(self, "_last_deterministic_signatures", []),
+        }
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(path, "w") as f:
+            json.dump(payload, f, indent=2)
+
+    
+    def save_input_summary(self, path: Path):
+        """保存 replay input summary"""
+
+        payload = {
+            "csv_file": str(self.csv_path),
+            "input_sha256": self.input_hash,
+            "row_count": self.input_row_count,
+        }
+
+        if hasattr(self, "_last_metrics"):
+            payload.update({
+                "pps_events": self._last_metrics.pps_events,
+                "imu_events": self._last_metrics.imu_events,
+            })
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(path, "w") as f:
+            json.dump(payload, f, indent=2)
+
+
     def save_plots(self, output_dir: Path):
-        """占位：保存plots"""
+        """生成 baseline replay plots"""
+
+        import matplotlib.pyplot as plt
+
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # 当前runner还没有采集trace，所以先生成占位说明文件
-        with open(output_dir / "README.md", "w") as f:
-            f.write(
-                "# Plots not generated yet\n\n"
-                "Current runner has not implemented CSV replay trace collection.\n"
-            )
+        if not hasattr(self, "_last_outputs"):
+            print("No replay outputs available")
+            return
+
+        trace = self._last_outputs
+
+        # -----------------------------------
+        # Extract series
+        # -----------------------------------
+        times = [
+            (x["board_time_us"] - trace[0]["board_time_us"]) / 1_000_000.0
+            for x in trace
+        ]
+
+        drift = [x["drift_ppm"] for x in trace]
+        offset = [x["offset_us"] for x in trace]
+        confidence = [x["confidence"] for x in trace]
+
+        states = [x["state"] for x in trace]
+
+        # -----------------------------------
+        # Drift Plot
+        # -----------------------------------
+        plt.figure(figsize=(14, 5))
+        plt.plot(times, drift)
+        plt.title("Drift PPM Over Time")
+        plt.xlabel("Runtime (s)")
+        plt.ylabel("Drift PPM")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(output_dir / "drift_plot.png")
+        plt.close()
+
+        # -----------------------------------
+        # Offset Plot
+        # -----------------------------------
+        plt.figure(figsize=(14, 5))
+        plt.plot(times, offset)
+        plt.title("Offset (us) Over Time")
+        plt.xlabel("Runtime (s)")
+        plt.ylabel("Offset (us)")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(output_dir / "offset_plot.png")
+        plt.close()
+
+        # -----------------------------------
+        # Confidence Plot
+        # -----------------------------------
+        plt.figure(figsize=(14, 5))
+        plt.plot(times, confidence)
+        plt.title("Confidence Over Time")
+        plt.xlabel("Runtime (s)")
+        plt.ylabel("Confidence")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(output_dir / "confidence_plot.png")
+        plt.close()
+
+        # -----------------------------------
+        # State Trace Plot
+        # -----------------------------------
+        state_map = {
+            "LOST": 0,
+            "RECOVERY": 1,
+            "HOLDOVER": 2,
+            "LOCKED": 3,
+        }
+
+        state_values = [state_map.get(s, -1) for s in states]
+
+        plt.figure(figsize=(14, 3))
+        plt.step(times, state_values, where="post")
+
+        plt.yticks(
+            [0, 1, 2, 3],
+            ["LOST", "RECOVERY", "HOLDOVER", "LOCKED"]
+        )
+
+        plt.title("DCA State Trace")
+        plt.xlabel("Runtime (s)")
+        plt.ylabel("State")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(output_dir / "state_trace.png")
+        plt.close()
+
+        print(f"Plots saved to: {output_dir}")
 
     
     def run_baseline(self) -> Tuple[DCAMetrics, bool]:
@@ -482,6 +613,27 @@ class TuningWorkflow:
         
         runner = DCATuningRunner(self.csv_path, self.baseline_params)
         metrics, is_det = runner.run_baseline()
+        print("\nBaseline Metrics Summary")
+        print("-" * 40)
+
+        print(f"Total Events:        {metrics.total_events}")
+        print(f"PPS Events:          {metrics.pps_events}")
+        print(f"IMU Events:          {metrics.imu_events}")
+
+        print(f"Max Drift PPM:       {metrics.max_drift_ppm:.3f}")
+        print(f"Mean Drift PPM:      {metrics.mean_drift_ppm:.3f}")
+
+        print(f"Max Offset (us):     {metrics.max_offset_us:.3f}")
+        print(f"Mean Offset (us):    {metrics.mean_offset_us:.3f}")
+
+        print(f"Monotonic Violations:{metrics.monotonic_violations}")
+
+        print(f"HOLDOVER Jump (us):  {metrics.holdover_jump_us:.3f}")
+        print(f"RECOVERY Jump (us):  {metrics.recovery_jump_us:.3f}")
+
+        print("\nState Duration:")
+        for k, v in metrics.state_duration.items():
+            print(f"  {k}: {v:.2f}s")
         
         if not is_det:
             print("❌ Fatal: Baseline is not deterministic. Fix dca_engine first.")
@@ -489,9 +641,49 @@ class TuningWorkflow:
         
         self.baseline_metrics = metrics
         
-        # 保存baseline
-        runner.save_metrics(self.output_dir / "baseline_metrics.json")
-        runner.save_plots(self.output_dir / "baseline_plots")
+        # -----------------------------------
+        # baseline output directory
+        # -----------------------------------
+        baseline_dir = self.output_dir / "baseline"
+        baseline_dir.mkdir(parents=True, exist_ok=True)
+
+        # -----------------------------------
+        # Save baseline outputs
+        # -----------------------------------
+        with open(baseline_dir / "params_used.json", "w") as f:
+            json.dump(
+                self.baseline_params.to_dict(),
+                f,
+                indent=2
+            )
+
+        runner.save_metrics(
+            baseline_dir / "baseline_metrics.json"
+        )
+
+        runner.save_trace(
+            baseline_dir / "baseline_trace.json"
+        )
+
+        runner.save_deterministic_verification(
+            baseline_dir / "deterministic_verification.json"
+        )
+
+        runner.save_input_summary(
+            baseline_dir / "replay_input_summary.json"
+        )
+
+        runner.save_plots(
+            baseline_dir / "plots"
+        )
+
+        decision_path = baseline_dir / "tuning_decision.md"
+
+        with open(decision_path, "w") as f:
+            if metrics.check_reject_rules()[0]:
+                f.write("BASELINE REJECTED\n")
+            else:
+                f.write("BASELINE ACCEPTED\n")
         
         return True
     
